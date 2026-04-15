@@ -39,7 +39,11 @@ pipeline:
                     shell: Sh
                     command: |-
                       set -e
-                        helm version
-                        echo "$DOCKER_PAT" | helm registry login registry-1.docker.io -u philipwalsh --password-stdin
-                        helm package charts/mychart
-                        helm push mychart-0.1.0.tgz oci://registry-1.docker.io/philipwalsh
+
+                      helm version
+
+                      echo "$DOCKER_PAT" | helm registry login registry-1.docker.io -u philipwalsh --password-stdin
+
+                      helm package ./recipe-api
+
+                      helm push recipe-api-*.tgz oci://registry-1.docker.io/philipwalsh
