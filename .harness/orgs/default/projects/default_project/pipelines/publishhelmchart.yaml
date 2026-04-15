@@ -1,0 +1,47 @@
+pipeline:
+  name: publish-helmchart
+  identifier: publishhelmchart
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: pwgh1
+        repoName: recipe-api-helm
+        build: <+input>
+  stages:
+    - stage:
+        name: publish-helmchart
+        identifier: publishhelmchart
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          caching:
+            enabled: true
+            override: true
+          buildIntelligence:
+            enabled: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: helm-publish
+                  identifier: helmpublish
+                  spec:
+                    image: alpine/helm:3.14.0
+                    shell: Sh
+                    envVariables:
+                      DOCKER_PAT: <+secrets.getValue("dockerhub_pat")>
+                    command: |
+                      helm version
+                      helm registry login registry-1.docker.io -u philipwalsh -p $DOCKER_PAT
+                      helm package charts/mychart
+                      helm push mychart-0.1.0.tgz oci://registry-1.docker.io/philipwalsh
