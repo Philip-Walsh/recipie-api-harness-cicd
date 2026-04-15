@@ -1,5 +1,5 @@
 pipeline:
-  name: test
+  name: publish-api-docker-image
   identifier: test
   projectIdentifier: default_project
   orgIdentifier: default
@@ -33,7 +33,8 @@ pipeline:
                     connectorRef: dockerhub
                     repo: docker.io/philipwalsh/recipe-api
                     tags:
-                      - testing
+                      - latest
+                      - <+codebase.commitSha>
                     caching: true
   properties:
     ci:
