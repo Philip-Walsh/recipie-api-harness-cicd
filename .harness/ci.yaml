@@ -46,3 +46,39 @@ pipeline:
                         type: String
                         value: pass
         tags: {}
+    - stage:
+        name: build-image
+        identifier: buildimage
+        description: ""
+        type: CI
+        spec:
+          cloneCodebase: true
+          caching:
+            enabled: true
+            override: true
+          buildIntelligence:
+            enabled: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: BuildAndPushDockerRegistry
+                  name: BuildAndPushDockerRegistry_1
+                  identifier: BuildAndPushDockerRegistry_1
+                  spec:
+                    connectorRef: account.harnessImage
+                    repo: ghcr.io/philip-walsh/
+                    tags:
+                      - testing
+                    caching: true
+  properties:
+    ci:
+      codebase:
+        connectorRef: pwgh1
+        repoName: recipe-api
+        build: <+input>
