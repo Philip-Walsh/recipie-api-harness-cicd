@@ -30,8 +30,8 @@ pipeline:
                   name: BuildAndPushDockerRegistry_1
                   identifier: BuildAndPushDockerRegistry_1
                   spec:
-                    connectorRef: account.harnessImage
-                    repo: ghcr.io/philip-walsh/recipe-api
+                    connectorRef: dockerhub
+                    repo: https://hub.docker.com/repository/docker/philipwalsh/devkit
                     tags:
                       - testing
                     caching: true
