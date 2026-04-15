@@ -44,6 +44,9 @@ pipeline:
 
                       echo "$DOCKER_PAT" | helm registry login registry-1.docker.io -u philipwalsh --password-stdin
 
+                      # Clean up old packages to avoid ambiguity
+                      rm -f *.tgz
+
                       helm package ./recipe-api
 
-                      helm push recipe-api-*.tgz oci://registry-1.docker.io/philipwalsh
+                      helm push recipe-api-$(grep 'version:' ./recipe-api/Chart.yaml | awk '{print $2}').tgz oci://registry-1.docker.io/philipwalsh
