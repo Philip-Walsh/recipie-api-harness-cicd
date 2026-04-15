@@ -31,7 +31,7 @@ pipeline:
                   identifier: BuildAndPushDockerRegistry_1
                   spec:
                     connectorRef: dockerhub
-                    repo: https://hub.docker.com/repository/docker/philipwalsh/devkit
+                    repo: docker.io/philipwalsh/recipe-api
                     tags:
                       - testing
                     caching: true
