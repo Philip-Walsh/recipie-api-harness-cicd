@@ -44,7 +44,6 @@ pipeline:
 
                       echo "$DOCKER_PAT" | helm registry login registry-1.docker.io -u philipwalsh --password-stdin
 
-                      # Clean up old packages to avoid ambiguity
                       rm -f *.tgz
 
                       helm package ./recipe-api
