@@ -1,0 +1,14 @@
+inputSet:
+  name: test123
+  identifier: test123
+  orgIdentifier: default
+  projectIdentifier: default_project
+  pipeline:
+    identifier: publishhelmchart
+    properties:
+      ci:
+        codebase:
+          build:
+            type: branch
+            spec:
+              branch: <+trigger.branch>
