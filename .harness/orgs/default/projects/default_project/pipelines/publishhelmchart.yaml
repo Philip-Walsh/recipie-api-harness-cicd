@@ -103,7 +103,7 @@ pipeline:
         spec:
           deploymentType: Kubernetes
           service:
-            serviceRef: recipe_api
+            serviceRef: recipe-api
             serviceDefinition:
               type: Kubernetes
               spec:
@@ -129,7 +129,7 @@ pipeline:
                         imagePath: philipwalsh/recipe-api
                         tag: <+codebase.commitSha>
           environment:
-            environmentRef: production_eks
+            environmentRef: envtest
             deployToAll: false
             infrastructureDefinitions:
               - identifier: eks_cluster
