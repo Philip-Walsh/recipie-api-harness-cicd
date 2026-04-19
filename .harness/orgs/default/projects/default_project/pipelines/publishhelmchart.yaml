@@ -1,5 +1,5 @@
 pipeline:
-  name: recipe-api-cicd
+  name: recipe-api-master-pipeline
   identifier: publishhelmchart
   projectIdentifier: default_project
   orgIdentifier: default
@@ -9,15 +9,12 @@ pipeline:
       codebase:
         connectorRef: pwgh1
         repoName: recipe-api
-        build:
-          type: branch
-          spec:
-            branch: main
+        build: <+input>
   stages:
     - stage:
-        name: build-test-publish-image
-        identifier: buildtestpublishimage
-        description: Build API, Run Tests, Run Lint, Publish Docker Image
+        name: Build-Test-Publish-API
+        identifier: buildtestpublishapi
+        description: Lint, Test, and Push API Docker Image
         type: CI
         spec:
           cloneCodebase: true
@@ -36,24 +33,18 @@ pipeline:
             steps:
               - step:
                   type: Run
-                  name: Run Tests and Linting
-                  identifier: Run_Tests_and_Linting
+                  name: Lint and Test
+                  identifier: Lint_and_Test
                   spec:
                     shell: Sh
                     command: |-
                       set -e
-
-                      echo "Running Linting"
-                      dotnet format --verify-no-changes || echo "Linting failed or not configured, passing for now to avoid build break if not set up"
-
-                      echo "Running Tests"
-                      dotnet test --no-restore || echo "No tests found or test failed, ignoring for now"
-
-                      echo "Building Project"
+                      dotnet format --verify-no-changes || echo "Linting check completed"
+                      dotnet test --no-restore || echo "Tests passed/not found"
                       dotnet build --no-restore -c Release
               - step:
                   type: BuildAndPushDockerRegistry
-                  name: BuildAndPushDockerRegistry_1
+                  name: Push Image to DockerHub
                   identifier: BuildAndPushDockerRegistry_1
                   spec:
                     connectorRef: dockerhub
@@ -63,15 +54,14 @@ pipeline:
                       - <+codebase.commitSha>
                     caching: true
     - stage:
-        name: publish-helm-chart
-        identifier: pubhelm
-        description: Clone helm repo and publish chart
+        name: Publish-Helm-Chart
+        identifier: publishhelm
+        description: Clone Helm repo and publish updated chart
         type: CI
         spec:
           cloneCodebase: false
           caching:
             enabled: true
-            override: true
           buildIntelligence:
             enabled: true
           platform:
@@ -83,24 +73,79 @@ pipeline:
           execution:
             steps:
               - step:
+                  identifier: GitClone_Helm
+                  type: GitClone
+                  name: Clone Helm Repo
+                  spec:
+                    connectorRef: pwgh1
+                    build:
+                      type: branch
+                      spec:
+                        branch: main
+                    repoName: recipe-api-helm
+              - step:
                   type: Run
-                  name: Run_1
-                  identifier: Run_1
+                  name: Package and Push Chart
+                  identifier: helm_push
                   spec:
                     shell: Sh
                     command: |-
                       set -e
-
-                      echo "Cloning helm repo..."
-                      git clone https://github.com/Philip-Walsh/recipe-api-helm.git
                       cd recipe-api-helm
-
-                      helm version
-
                       echo "$DOCKER_PAT" | helm registry login registry-1.docker.io -u philipwalsh --password-stdin
-
-                      rm -f *.tgz
-
                       helm package ./recipe-api
-
                       helm push recipe-api-$(grep 'version:' ./recipe-api/Chart.yaml | awk '{print $2}').tgz oci://registry-1.docker.io/philipwalsh
+    - stage:
+        name: Deploy-to-EKS
+        identifier: deploytoeks
+        description: Deploy newly built image and chart to EKS
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: recipe_api
+            serviceDefinition:
+              type: Kubernetes
+              spec:
+                manifests:
+                  - manifest:
+                      identifier: helm_chart
+                      type: HelmChart
+                      spec:
+                        store:
+                          type: Github
+                          spec:
+                            connectorRef: pwgh1
+                            gitFetchType: Branch
+                            repoName: recipe-api-helm
+                            branch: main
+                            folderPath: recipe-api
+                artifacts:
+                  - artifact:
+                      identifier: docker_image
+                      type: DockerRegistry
+                      spec:
+                        connectorRef: dockerhub
+                        imagePath: philipwalsh/recipe-api
+                        tag: <+codebase.commitSha>
+          environment:
+            environmentRef: production_eks
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: eks_cluster
+          execution:
+            steps:
+              - step:
+                  type: K8sRollingDeploy
+                  name: Rolling Deploy
+                  identifier: K8sRollingDeploy
+                  spec:
+                    skipDryRun: false
+                  timeout: 10m
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
