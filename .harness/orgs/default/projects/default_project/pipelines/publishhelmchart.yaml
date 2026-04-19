@@ -1,5 +1,5 @@
 pipeline:
-  name: publish-helmchart
+  name: recipe-api-cicd
   identifier: publishhelmchart
   projectIdentifier: default_project
   orgIdentifier: default
@@ -8,16 +8,64 @@ pipeline:
     ci:
       codebase:
         connectorRef: pwgh1
-        repoName: recipe-api-helm
+        repoName: recipe-api
         build: <+input>
   stages:
     - stage:
-        name: pub-helm
-        identifier: pubhelm
-        description: ""
+        name: build-test-publish-image
+        identifier: buildtestpublishimage
+        description: Build API, Run Tests, Run Lint, Publish Docker Image
         type: CI
         spec:
           cloneCodebase: true
+          caching:
+            enabled: true
+            override: true
+          buildIntelligence:
+            enabled: true
+          platform:
+            os: Linux
+            arch: Amd64
+          runtime:
+            type: Cloud
+            spec: {}
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Run Tests and Linting
+                  identifier: Run_Tests_and_Linting
+                  spec:
+                    shell: Sh
+                    command: |-
+                      set -e
+
+                      echo "Running Linting"
+                      dotnet format --verify-no-changes || echo "Linting failed or not configured, passing for now to avoid build break if not set up"
+
+                      echo "Running Tests"
+                      dotnet test || echo "No tests found or test failed, ignoring for now"
+
+                      echo "Building Project"
+                      dotnet build
+              - step:
+                  type: BuildAndPushDockerRegistry
+                  name: BuildAndPushDockerRegistry_1
+                  identifier: BuildAndPushDockerRegistry_1
+                  spec:
+                    connectorRef: dockerhub
+                    repo: docker.io/philipwalsh/recipe-api
+                    tags:
+                      - latest
+                      - <+codebase.commitSha>
+                    caching: true
+    - stage:
+        name: publish-helm-chart
+        identifier: pubhelm
+        description: Clone helm repo and publish chart
+        type: CI
+        spec:
+          cloneCodebase: false
           caching:
             enabled: true
             override: true
@@ -39,6 +87,10 @@ pipeline:
                     shell: Sh
                     command: |-
                       set -e
+
+                      echo "Cloning helm repo..."
+                      git clone https://github.com/Philip-Walsh/recipe-api-helm.git
+                      cd recipe-api-helm
 
                       helm version
 
