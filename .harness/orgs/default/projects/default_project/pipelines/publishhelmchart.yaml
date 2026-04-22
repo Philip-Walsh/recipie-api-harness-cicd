@@ -39,6 +39,7 @@ pipeline:
                     shell: Sh
                     command: |-
                       set -e
+                      dotnet restore
                       dotnet format --verify-no-changes || echo "Linting check completed"
                       dotnet test --no-restore || echo "Tests passed/not found"
                       dotnet build --no-restore -c Release
@@ -83,6 +84,7 @@ pipeline:
                       spec:
                         branch: main
                     repoName: recipe-api-helm
+                    cloneDirectory: recipe-api-helm
               - step:
                   type: Run
                   name: Package and Push Chart
@@ -94,7 +96,8 @@ pipeline:
                       cd recipe-api-helm
                       echo "$DOCKER_PAT" | helm registry login registry-1.docker.io -u philipwalsh --password-stdin
                       helm package ./recipe-api
-                      helm push recipe-api-$(grep 'version:' ./recipe-api/Chart.yaml | awk '{print $2}').tgz oci://registry-1.docker.io/philipwalsh
+                      CHART_VERSION=$(grep 'version:' ./recipe-api/Chart.yaml | awk '{print $2}')
+                      helm push recipe-api-${CHART_VERSION}.tgz oci://registry-1.docker.io/philipwalsh/recipe-api
     - stage:
         name: Deploy-to-EKS
         identifier: deploytoeks
